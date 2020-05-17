@@ -1,0 +1,105 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+---
+title: "Statistical Inference Assignment 1 - Question 1"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Lachlan Glascott
+
+April 2020
+
+# Question 1
+
+## Overview
+
+This project is to investigate the exponential distribution in R and compare it with the Central Limit Theorem. The key questions are to:
+
+       1.  Show the sample mean and compare it to the theoretical mean of the distribution.
+       2.  Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution.
+       3.  Show that the distribution is approximately normal.
+       
+```{r setup, include=FALSE}
+library(ggplot2)
+```
+
+## Simulation
+
+As per the exercise instructions, the exponential distribution can be simulated in R with rexp(n, lambda) where lambda is the rate parameter:
+- The theoretical mean of exponential distribution is 1/lambda and the standard deviation is also 1/lambda. 
+- Set lambda = 0.2 for all of the simulations. 
+- The distribution of averages of 40 exponentials is investigated over 1000 simulations.
+
+The code chunk below performs the simulation and calculates the sample mean across each of the simulations.
+
+```{r sim}
+simulations <- 1000
+sample_size <- 40
+lambda <- 0.2
+
+exp_means = NULL
+for (i in 1 : simulations) exp_means = c(exp_means, mean(rexp(sample_size, lambda)))
+
+exp_means_df <- as.data.frame(exp_means)
+
+
+```
+
+## Sample Mean versus Theoretical Mean
+
+The sample mean of the distrubution is very similar to the theoretical mean of 5. This is shown in the plot below wher the center of the distibution for the sample is blue and the theoretical centre is red. 
+```{r means}
+sample_mean <- mean(exp_means)
+theoretical_mean <- 1/lambda
+
+sample_mean
+theoretical_mean
+
+ggplot(exp_means_df, aes(x=exp_means)) + 
+  geom_histogram(color="black", fill="white") +
+  geom_vline(xintercept=theoretical_mean, color="red", size=1) +
+  geom_vline(xintercept=sample_mean, color="blue", size=1);
+
+```
+
+## Sample Variance versus Theoretical Variance
+
+The theoretical variance is calculated as the standard deviation squared devided by the sample size.
+
+The sample variance is the variance between the expected means generated from the simulations. 
+
+```{r variance}
+theoretical_variance = ((1/lambda)^2/sample_size)
+sample_variance <- var(exp_means)
+
+theoretical_variance
+sample_variance
+```
+
+The variance of the sample distribution is very similar to the theoretical variance is 0.625. 
+
+
+```{r normal distribution}
+ggplot(exp_means_df, aes(x = exp_means)) + 
+  geom_histogram(color="black", fill="white", aes(y = ..density..)) +
+  stat_function(fun = dnorm, n = 1000, args = list(theoretical_mean, sqrt(theoretical_variance)), color = "red")
+
+```
+
+
+A large collection of random exponentials is not Gaussian (refer to Appendix), however and the distribution of a large collection of averages of 40 exponentials is Gaussian as demonstrated by the bell shaped distibution of the histogram of averages. The shape of the distribution is very similar to a a distribution of values randonly generated from a normal distibution - see red line in chart above. This shows that the distribution is approximately normal.
+
+\pagebreak
+```{r, echo=FALSE}
+```
+## Appendix
+```{r appendix}
+hist(rexp(1000, lambda)) 
+```
