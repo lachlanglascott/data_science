@@ -1,0 +1,112 @@
+---
+title: "Machine Learning Project"
+output:
+  html_document: default
+  pdf_document: default
+---
+Lachlan Glascott
+May 2020
+
+## Introduction
+       
+```{r setup, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(caret)
+library(rattle)
+knitr::opts_chunk$set(fig.width=12, fig.height=8) 
+```
+
+```{r datanoinclude, include = FALSE}
+training <- read_csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+
+test <- read_csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+
+```
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. 
+
+## Preprocessing
+
+First we remove the variables with NA values from both the training and testing sets. Similarly, the descriptive string variables also need to be removed in order to perform the analysis.
+
+```{r data supress, include=FALSE}
+suppressWarnings(funs())
+```
+
+```{r data,}
+
+non.na.vars <- training %>% 
+  summarise_each(funs(mean(is.na(.)))) %>% 
+  select_if(~any(. == 0)) %>% 
+  names()
+
+training_clean <- training %>% 
+  select_at(non.na.vars) %>% 
+  select(-X1, -user_name, -raw_timestamp_part_1, -raw_timestamp_part_2, -cvtd_timestamp, -new_window, -num_window)
+
+training_partition <- createDataPartition(y=training_clean$classe, p=0.75, list=FALSE)
+training_set <- training_clean[training_partition, ] 
+test_set <- training_clean[-training_partition, ]
+
+```
+
+The provided training data was partitioned further into a training set (75% of data) and a testing set (essentially being used as a validation set). The chosen method was sampling without replacement to minimise the already significant computation required to run the models.
+
+The selected models will be fitted using the training data and tested on the testing data set. The most accurate model will be used to make predictions on the testing set provided. 
+
+```{r cross validation}
+training_partition <- createDataPartition(y=training_clean$classe, p=0.75, list=FALSE)
+training_set <- training_clean[training_partition, ] 
+test_set <- training_clean[-training_partition, ]
+
+dim(training_set); dim(test_set)
+
+```
+## Data Exploration
+
+There are five classes in the dataset from A to E, each making up a reasonable proportion of the total outcomes.
+
+```{r exploration, fig.height = 3, fig.width = 3, fig.align = "center", echo=FALSE}
+training_set %>% 
+  group_by(classe) %>% 
+  summarise(count = n())
+
+ggplot(training_set, aes(x=classe))+
+  geom_bar(color="darkblue", fill="lightblue")
+```
+
+Since there are more than two classes we will use tree based approaches to fit the model and make classification predictions. 
+
+```{r model}
+
+model_tree <- train(classe ~ .,data=training_set, method="rpart")
+
+fancyRpartPlot(model_tree$finalModel)
+
+pred_tree <- predict(model_tree, test_set)
+
+confusionMatrix(pred_tree, as.factor(test_set$classe))
+```
+
+The accuracy for the decision tree on the test set is 49.12%. A random forest is method is now fit to see if the ccuracy is improved. 
+
+```{r rf one}
+
+model_rf <- train(classe ~ ., method = "rf", data=training_set)
+
+pred_rf <- predict(model_rf, test_set)
+```
+```{r rf}
+confusionMatrix(pred_rf, as.factor(test_set$classe))
+```
+The accuracy of the random forest is very high, 99.47%.Based on the accuracy of the random foreston the test set, the out of sample error is less than 1%.
+
+Because of the high accuracy we go ahead and make the final predcitons in the test set using the random forest model. The final predictions for the test set are shown below.
+
+```{r best model}
+predictfinal <- predict(model_rf, test)
+predictfinal
+```
