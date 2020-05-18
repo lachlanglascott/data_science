@@ -1,0 +1,189 @@
+---
+title: "Statistical Inference Assignment 1"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+Lachlan Glascott
+
+April 2020
+
+This project is to investigate the exponential distribution in R and compare it with the Central Limit Theorem. 
+- The exponential distribution can be simulated in R with rexp(n, lambda) where lambda is the rate parameter. 
+- The mean of exponential distribution is 1/lambda and the standard deviation is also 1/lambda. Set lambda = 0.2 for all of the simulations. 
+- The distribution of averages of 40 exponentials is generated over a thousand simulations.
+
+Illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponentials. You should
+       1. Show the sample mean and compare it to the theoretical mean of the distribution.
+       2. Show how variable the sample is (via variance) and compare it to the theoretical variance of the distribution.
+       3. Show that the distribution is approximately normal.
+
+
+Firstly, ggplot is loaded to create the histrograms. 
+
+```{r setup, include=FALSE}
+library(ggplot2)
+```
+
+## Simulation
+
+As per the exercise instructions, the exponential distribution can be simulated in R with rexp(n, lambda) where lambda is the rate parameter:
+
+1.The theoretical mean of exponential distribution is 1/lambda and the standard deviation is also 1/lambda. 
+2.Set lambda = 0.2 for all of the simulations. 
+3.The distribution of averages of 40 exponentials is investigated over 1000 simulations.
+
+The code chunk below performs the simulation and calculates the sample mean across each of the simulations.
+
+```{r sim}
+simulations <- 1000
+sample_size <- 40
+lambda <- 0.2
+
+exp_means = NULL
+for (i in 1 : simulations) exp_means = c(exp_means, mean(rexp(sample_size, lambda)))
+
+exp_means_df <- as.data.frame(exp_means)
+
+
+```
+
+## Sample Mean versus Theoretical Mean
+
+The sample mean of the distrubution is very similar to the theoretical mean of 5. This is shown in the plot below wher the center of the distibution for the sample is blue and the theoretical centre is red. 
+```{r means}
+sample_mean <- mean(exp_means)
+theoretical_mean <- 1/lambda
+
+sample_mean
+theoretical_mean
+
+ggplot(exp_means_df, aes(x=exp_means)) + 
+  geom_histogram(color="black", fill="white") +
+  geom_vline(xintercept=theoretical_mean, color="red", size=1) +
+  geom_vline(xintercept=sample_mean, color="blue", size=1);
+
+```
+
+## Sample Variance versus Theoretical Variance
+
+The theoretical variance is calculated as the standard deviation squared devided by the sample size.
+
+The sample variance is the variance between the expected means generated from the simulations. 
+
+```{r variance}
+theoretical_variance = ((1/lambda)^2/sample_size)
+sample_variance <- var(exp_means)
+
+theoretical_variance
+sample_variance
+```
+
+The variance of the sample distribution is very similar to the theoretical variance is 0.625. 
+
+
+```{r normal distribution}
+hist(rexp(1000, lambda)) 
+
+ggplot(exp_means_df, aes(x = exp_means)) + 
+  geom_histogram(color="black", fill="white", aes(y = ..density..)) +
+  stat_function(fun = dnorm, n = 1000, args = list(theoretical_mean, sqrt(theoretical_variance)), color = "red")
+
+```
+
+
+A large collection of random exponentials is not Gaussian, however and the distribution of a large collection of averages of 40 exponentials is Gaussian as demonstrated by the bell shaped distibution of the histogram of averages. The shape of the distribution is very similar to a a distribution of values randonly generated from a normal distibution - see red line in chart above. 
+
+
+This shows that the distribution is approximately normal.
+
+# Question 2
+
+## Overview
+Now in the second portion of the project, we're going to analyze the ToothGrowth data in the R datasets package.
+
+Firstly the data is loaded.
+
+```{r load, include=FALSE}
+library(dplyr)
+```
+
+
+```{r data}
+data("ToothGrowth")
+dim(ToothGrowth)
+str(ToothGrowth)
+
+head(ToothGrowth)
+
+```
+The data has 60 rows and three columns. Each row indicates an individual guinea pig, while the columns len (tooth length) and dose (dose level) are numerical, and supp (supplement) which is a categoerical variable.
+
+The mean and standard deviation of tooth length by supplement and dose are shown below. 
+
+```{r tooth mean and sd}
+ToothGrowth %>% 
+  dplyr::group_by(supp, dose) %>% 
+  dplyr::summarise(mean_len = mean(len),
+                   sd_len = sd(len))
+
+```
+
+The data can also be displayed in a boxplot.
+
+```{r boxplot}
+    ggplot(ToothGrowth, aes(x = factor(dose), y = len, fill = factor(dose)))+
+                  geom_boxplot()+
+                  facet_grid(.~supp)
+```
+
+The summary data suggests that guinea pigs which recieved the OJ supplement have a higher average tooth length than those which recieved VC. We can test this under the null hypothesis that there is no difference between mean tooth length for guinea pigs which recieved OJ and VC.
+
+```{r supp}
+VC <- ToothGrowth %>% dplyr::filter(supp == "VC")
+OJ <- ToothGrowth %>% dplyr::filter(supp == "OJ")
+
+t.test(OJ$len, VC$len)
+
+```
+
+Since the 95% confidence interval includes 0, we fail to reject the null hypothesis that that there is no difference between mean tooth length for guinea pigs which recieved OJ and VC. However, since the p value is below 0.1 we would reject the null hypothesis at a 90% confidence level. 
+
+The summary data also shows that average tooth length also tends to increase as the dose increases. We can also test this under three seperate hypothesis tests:
+1. The difference in means of groups which recieved dosage of 2 and dosage of 0.5 is equal to zero
+2. The difference in means of groups which recieved dosage of 2 and dosage of 1 is equal to zero
+3. The difference in means of groups which recieved dosage of 1 and dosage of 0.5 is equal to zero
+
+```{r dose}
+dose05 <- ToothGrowth %>% dplyr::filter(dose == 0.5)
+dose1 <- ToothGrowth %>% dplyr::filter(dose == 1)
+dose2 <- ToothGrowth %>% dplyr::filter(dose == 2)
+t.test(dose2$len, dose05$len)
+t.test(dose2$len, dose1$len)
+t.test(dose1$len, dose05$len)
+
+```
+
+For all three tests we reject the null hypothesis that the difference in the means of groups which recieved different dose levels is zero at the 95% confidence level. 
+
+Note that using multiple hypotheis tests is subject to multiple comparisons issues such as false positives and false discovery. False positives can be controlled using the Bonferroni correction. 
+
+```{r multiple comparisons}
+p1 <- t.test(dose2$len, dose05$len)$p.value
+p2 <- t.test(dose2$len, dose1$len)$p.value
+p3 <- t.test(dose1$len, dose05$len)$p.value
+
+p_values <- c(p1, p2, p3)
+
+alpha <- 0.05
+hypotheses <- 3
+
+bonferroni <- alpha/hypotheses
+
+p_values<bonferroni
+
+```
+Controlling for FWER we still reject the null hypothesis for each of the hypotheses. 
+
+There is insufficient evidence to conclude with 95% confidence that OJ or VC have a different impact on average tooth length. However, there is evidence that average tooth length increases as the dose level increases. 

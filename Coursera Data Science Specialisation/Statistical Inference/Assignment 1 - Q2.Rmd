@@ -1,0 +1,111 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+---
+title: "Statistical Inference Assignment 1 - Question 2"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Lachlan Glascott
+
+April 2020
+
+# Question 2
+
+## Overview
+Now in the second portion of the project, we're going to analyze the ToothGrowth data in the R datasets package and compare tooth growth by supp and dose.
+
+Firstly the data is loaded.
+
+```{r load, include=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+
+
+```{r data}
+data("ToothGrowth")
+str(ToothGrowth)
+
+```
+The data has 60 rows and three columns. Each row indicates an individual guinea pig, while the columns len (tooth length) and dose (dose level) are numerical, and supp (supplement) which is a categoerical variable.
+
+The mean and standard deviation of tooth length by supplement and dose are shown below. 
+
+```{r tooth mean and sd}
+ToothGrowth %>% 
+  dplyr::group_by(supp, dose) %>% 
+  dplyr::summarise(mean_len = mean(len),
+                   sd_len = sd(len))
+
+```
+
+The data can also be displayed in a boxplot (refer to Appendix).
+
+The summary data suggests that guinea pigs which recieved the OJ supplement have a higher average tooth length than those which recieved VC. We can test this under the null hypothesis that there is no difference between mean tooth length for guinea pigs which recieved OJ and VC.
+
+```{r supp}
+VC <- ToothGrowth %>% dplyr::filter(supp == "VC")
+OJ <- ToothGrowth %>% dplyr::filter(supp == "OJ")
+
+t.test(OJ$len, VC$len)
+
+```
+
+Since the 95% confidence interval includes 0, we fail to reject the null hypothesis that that there is no difference between mean tooth length for guinea pigs which recieved OJ and VC. However, since the p value is below 0.1 we would reject the null hypothesis at a 90% confidence level. 
+
+The summary data also shows that average tooth length also tends to increase as the dose increases. We can also test this under three seperate hypothesis tests:
+1. The difference in means of groups which recieved dosage of 2 and dosage of 0.5 is equal to zero
+2. The difference in means of groups which recieved dosage of 2 and dosage of 1 is equal to zero
+3. The difference in means of groups which recieved dosage of 1 and dosage of 0.5 is equal to zero
+
+```{r dose}
+dose05 <- ToothGrowth %>% dplyr::filter(dose == 0.5)
+dose1 <- ToothGrowth %>% dplyr::filter(dose == 1)
+dose2 <- ToothGrowth %>% dplyr::filter(dose == 2)
+t.test(dose2$len, dose05$len)
+t.test(dose2$len, dose1$len)
+t.test(dose1$len, dose05$len)
+
+```
+
+For all three tests we reject the null hypothesis that the difference in the means of groups which recieved different dose levels is zero at the 95% confidence level. 
+
+Note that using multiple hypotheis tests is subject to multiple comparisons issues such as false positives and false discovery. False positives can be controlled using the Bonferroni correction. 
+
+```{r multiple comparisons}
+p1 <- t.test(dose2$len, dose05$len)$p.value
+p2 <- t.test(dose2$len, dose1$len)$p.value
+p3 <- t.test(dose1$len, dose05$len)$p.value
+
+p_values <- c(p1, p2, p3)
+
+alpha <- 0.05
+hypotheses <- 3
+
+bonferroni <- alpha/hypotheses
+
+p_values<bonferroni
+
+```
+Controlling for FWER we still reject the null hypothesis for each of the hypotheses. 
+
+There is insufficient evidence to conclude with 95% confidence that OJ or VC have a different impact on average tooth length. However, there is evidence that average tooth length increases as the dose level increases. 
+
+\pagebreak
+```{r, echo=FALSE}
+```
+## Appendix
+
+```{r boxplot}
+    ggplot(ToothGrowth, aes(x = factor(dose), y = len, fill = factor(dose)))+
+                  geom_boxplot()+
+                  facet_grid(.~supp)
+```
+
