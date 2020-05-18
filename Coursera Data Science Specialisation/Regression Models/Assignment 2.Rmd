@@ -1,0 +1,147 @@
+---
+title: "Regression Models Project"
+output:
+  pdf_document: default
+  html_document: default
+---
+Lachlan Glascott
+May 2020
+
+## Executive Summary
+
+Motor Trend is a magazine about the automobile industry. Motor Trend is interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested
+in the following two questions:
+1. Is an automatic or manual transmission better for MPG
+2. Quantify the MPG difference between automatic and manual transmissions
+
+Manual transmission is better for MPG than automatic transmission. It is estimated that manual transmissions are 2.9 MPG higher than automatic, holding weight and speed constant.
+       
+```{r setup, include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(corrplot)
+library(car)
+knitr::opts_chunk$set(fig.width=12, fig.height=8) 
+```
+
+```{r data, include = FALSE}
+data(mtcars)
+
+```
+
+## Is automatic or manual transmission better for MPG?
+```{r fit, include = FALSE}
+model_data <- mtcars %>% 
+  mutate(am = case_when(am == 0 ~ "Auto",
+                                 am == 1 ~ "Manual",
+                                 TRUE ~ "Other"))
+
+```
+
+```{r fit2, echo = FALSE}
+model_data  %>% 
+  group_by(am) %>% 
+  summarise(average_mpg = mean(mpg))
+
+```
+
+```{r automanual}
+
+fit <- lm(mpg ~ am,data = model_data)
+summary(fit)$coeff
+
+```
+
+
+Manual cars have a mean mpg of 24.39 compared to an average mpg of 17.15 for automatic. From the t-test the p-value is less than 0.5 so at a 95% confidence level we we can reject the null hypothesis that there is no difference in mpg, and conclude with that manual cars have a higher mpg than automatic.
+
+However, there may be other characteristics of cars which affect mpg which are correlated with the transmission type.
+
+## Exploratory Analysis
+The scatter plots in the Appendix show that the am variable is highly correlated (postively or negatively) with several other variables. It may be these variables, such as the weight of the car, which are impacting on the mpg. 
+
+This can be tested using multivariate regression analysis to quantify the mpg difference between automatic and manual transmissions controlling for these other factors.
+
+```{r exploratory 1, include = FALSE}
+pairs(subset(mtcars,select=-c(am)))
+```
+
+## Modelling
+
+A simple linear regression model shows the postive relationship between manual cars and mpg, and explains 36% of the variation. We now fit a multivariate model with all of the variables in the dataset to see how this impacts on the relationship.
+
+```{r multivariate, echo = FALSE}
+fit2 <- lm(mpg~., data = model_data)
+
+summary(fit2)$coeff
+
+anova(fit,fit2)
+```
+After including all of the variables in the dataset (refer to Appendix), the model estimates that miles per gallon for manual cars is 2.5 higher than automatic cars, holding all other variables constant. However, the p-value higher than 0.5 and as such we fail to reject the null hypothesis. In addition, there are no statsitically significant variables in the model which may be caused by overfitting by including correlated variables.
+
+The analysis of variance inflation factors shows that there are statistically significant differences in the models and omore than just the am variable should be included. 
+
+Based on the correlation plots and results from the multivariate regression model, the following model is fit.
+
+```{r model selection, include = FALSE}
+vif(fit2)
+```
+
+```{r model selection 3, echo = FALSE}
+fit3 <- lm(mpg~am + wt + qsec, data = model_data)
+summary(fit3)$coeff
+
+```
+It is estimated that the MPG difference between manual transmission and an automatic transmission is 2.9, holding weight and quarter mile time constant.
+
+
+```{r stepwise, include = FALSE}
+Multi = lm(data = mtcars, mpg~.)
+
+Best = step(Multi, direction = "both")
+summary(Best)
+
+```
+
+\pagebreak
+```{r, echo=FALSE}
+```
+## Appendix
+
+### Boxplot mpg vs transmission type
+```{r appendix 2, fig.height = 5, fig.width = 4, fig.align = "center", echo=FALSE}
+boxplot(mtcars$mpg ~ mtcars$am, data = mtcars, outpch = 19, ylab="mpg",xlab="am", col="blue")
+```
+### MPG Scatter Plots
+```{r exploratory, echo=FALSE}
+mtcars %>%
+  gather(-mpg, -am, key = "var", value = "value") %>% 
+  ggplot(aes(x = value, y = mpg, color = factor(am))) +
+  geom_point() +
+  facet_wrap(~ var, scales = "free")
+
+```
+
+### Correlation plot mtcars variables
+```{r appendix 1, fig.height = 4, fig.width = 4, fig.align = "center", echo = FALSE}
+corrplot(cor(mtcars), method = "circle")
+
+```
+
+### Model summaries
+
+```{r appendix 5}
+summary(fit)
+
+summary(fit2)
+
+summary(fit3)
+
+```
+
+### Final model residual analysis
+```{r appendix 7,echo = FALSE}
+par(mfrow = c(2, 2))
+plot(fit3)
+
+```
